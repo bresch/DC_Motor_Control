@@ -85,8 +85,8 @@ Pk_mem = zeros(4,nEpochs);
 Pk_mem(:,1) = [Pk(1,1);Pk(2,2);Pk(3,3);Pk(4,4)];
 
 % System simulation
-Jm = 2*J;
-Lm = L*1.2;
+Jm = J;
+Lm = L;
 Fm = [
     -R/Lm    -Kb/Lm   0   0;
     Ki/Jm    -b/Jm    0   -1/Jm;
@@ -97,27 +97,28 @@ sys = ss(Fm,G,H,0);
 % sys = ss(Phik, Psik, H, 0,dt);
 % u = ones(length(t),1);
 u = sin(t);
-x0 = [0 0 pi 0.5]';
+x0 = [0 0 0 0]';
 [ySim,t,statesSim] = lsim(sys,u,t,x0);
 % ySim(500:end) = ySim(499)*ones(length(ySim(500:end)),1);
 meas = ySim + stdHall*randn(size(t));
 
 % Kalman simulation
+tic;
 for k = 2:nEpochs
     xPred = Phik*xState + Psik*u(k);    % State prediction
     PkPred = Phik*Pk*Phik'+Qk;          % State covariance prediction
     
     inn = meas(k) - H*xPred;            % Innovation
-    
-    S = H*PkPred*H' + Rk;               % Innovation covariance
+%     S = H*PkPred*H' + Rk;               % Innovation covariance
     
 %     Kk = PkPred*H'*S^(-1);              % Kalman gain
     p = PkPred(3,3);
     r = Rk;
-    Kk = (1/(p+r))*PkPred(:,3);
+    Kk = PkPred(:,3)/(p+r);
     
     xState = xPred + Kk*inn;            % State update
-    Pk = PkPred - Kk*S*Kk';             % State covariance update
+%     Pk = PkPred - Kk*S*Kk';             % State covariance update
+    Pk = PkPred - PkPred(:,3)*PkPred(3,:)/(p+r);
     
     % Store values
     i(k) = xState(1);
@@ -130,12 +131,13 @@ for k = 2:nEpochs
     Kk_mem(:,k) = Kk;
     
     % Adaptive algorithm for Qk and Rk
-    if mod(k,101) == 0
-        C_dz = sum(res_mem(k-100:k).*res_mem(k-100:k))/100;
+    if mod(k,100) == 0
+        C_dz = sum(res_mem(k-99:k).*res_mem(k-99:k))/100;
         Qk = Kk*C_dz*Kk';
         Rk = C_dz+H*Pk*H';
     end
 end
+toc;
 
 figure;
 subplot(4,1,1);
@@ -178,3 +180,5 @@ ylabel('External torque (N)');
 
 figure;
 stem(t,inn_mem);
+ylabel('Innovation (rad)');
+xlabel('Time (s)');
