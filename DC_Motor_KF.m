@@ -111,10 +111,10 @@ for k = 2:nEpochs
     
     S = H*PkPred*H' + Rk;               % Innovation covariance
     
-    Kk = PkPred*H'*S^(-1);              % Kalman gain
+%     Kk = PkPred*H'*S^(-1);              % Kalman gain
     p = PkPred(3,3);
     r = Rk;
-    Kk2 = (1/(p+r))*PkPred(:,3);
+    Kk = (1/(p+r))*PkPred(:,3);
     
     xState = xPred + Kk*inn;            % State update
     Pk = PkPred - Kk*S*Kk';             % State covariance update
